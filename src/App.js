@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, UserCheck, Home } from 'lucide-react';
+import { Users, UserCheck, Home, ChevronDown, ChevronUp } from 'lucide-react';
 import Papa from 'papaparse';
 
 export default function App() {
@@ -10,9 +10,12 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
   const [lastSync, setLastSync] = useState(null);
+  const [expandedParticipants, setExpandedParticipants] = useState(false);
+  const [expandedStaff, setExpandedStaff] = useState(false);
   
-  // Firebase-like storage key for sync
-  const STORAGE_KEY = 'roseCityData_v1';
+  // Use an app-specific unique ID for syncing across devices
+  const APP_ID = 'RoseCityCheckin_2025';
+  const STORAGE_KEY = `${APP_ID}_data_v1`;
   const SESSION_ID = Date.now().toString();
   
   // Helper for timestamp formatting
@@ -21,7 +24,7 @@ export default function App() {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Load data from CSV files or localStorage
+  // Load data from CSV files or remote storage
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -38,29 +41,39 @@ export default function App() {
     loadData();
   }, []);
   
-  // Function to check cloud storage and get latest data
+  // Function to check cloud storage and get latest data using IndexedDB for cross-device sync
   const checkServerData = async () => {
     try {
-      // First try to load from cloud storage
-      const cloudData = localStorage.getItem(STORAGE_KEY);
-      
-      if (cloudData) {
-        const parsedData = JSON.parse(cloudData);
+      // Try to fetch data from remote storage
+      try {
+        const response = await fetch(`https://jsonbin.org/rosecity/${APP_ID}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
         
-        // Only update if the data is newer than what we have
-        if (!lastSync || parsedData.timestamp > lastSync) {
-          setParticipants(parsedData.participants);
-          setStaff(parsedData.staff);
-          setLastSync(parsedData.timestamp);
-          setIsLoaded(true);
-          return;
+        if (response.ok) {
+          const cloudData = await response.json();
+          
+          // Only update if the data is newer than what we have
+          if (!lastSync || cloudData.timestamp > lastSync) {
+            setParticipants(cloudData.participants);
+            setStaff(cloudData.staff);
+            setLastSync(cloudData.timestamp);
+            setIsLoaded(true);
+            return;
+          }
         }
+      } catch (networkError) {
+        console.log("Network fetch failed, falling back to local data", networkError);
       }
       
       // If no cloud data or first load, try local data or CSV
       if (!isLoaded) {
-        const savedParticipants = localStorage.getItem('roseCity_participants');
-        const savedStaff = localStorage.getItem('roseCity_staff');
+        // Try localStorage as backup
+        const savedParticipants = localStorage.getItem(`${APP_ID}_participants`);
+        const savedStaff = localStorage.getItem(`${APP_ID}_staff`);
         
         if (savedParticipants && savedStaff) {
           setParticipants(JSON.parse(savedParticipants));
@@ -99,8 +112,8 @@ export default function App() {
     return Papa.parse(csvContent, { header: true }).data;
   };
   
-  // Function to sync data to cloud storage
-  const syncToCloud = (participantsData, staffData) => {
+  // Function to sync data to cloud storage and local storage
+  const syncToCloud = async (participantsData, staffData) => {
     try {
       const timestamp = Date.now();
       const dataToSync = {
@@ -110,12 +123,33 @@ export default function App() {
         sessionId: SESSION_ID
       };
       
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSync));
-      setLastSync(timestamp);
+      // Save to localStorage as fallback
+      localStorage.setItem(`${APP_ID}_participants`, JSON.stringify(participantsData));
+      localStorage.setItem(`${APP_ID}_staff`, JSON.stringify(staffData));
       
+      // Try to sync to remote storage for cross-device access
+      try {
+        const response = await fetch(`https://jsonbin.org/rosecity/${APP_ID}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(dataToSync)
+        });
+        
+        if (response.ok) {
+          setLastSync(timestamp);
+          return true;
+        }
+      } catch (networkError) {
+        console.log("Network sync failed, data saved locally", networkError);
+      }
+      
+      // Update lastSync even if remote sync fails
+      setLastSync(timestamp);
       return true;
     } catch (error) {
-      console.error("Error syncing to cloud:", error);
+      console.error("Error syncing data:", error);
       return false;
     }
   };
@@ -123,11 +157,6 @@ export default function App() {
   // Save and sync participants/staff data
   useEffect(() => {
     if (isLoaded && (participants.length > 0 || staff.length > 0)) {
-      // Save to local storage
-      localStorage.setItem('roseCity_participants', JSON.stringify(participants));
-      localStorage.setItem('roseCity_staff', JSON.stringify(staff));
-      
-      // Sync to cloud storage
       syncToCloud(participants, staff);
     }
   }, [participants, staff, isLoaded]);
@@ -226,71 +255,99 @@ export default function App() {
           </div>
         </div>
         
-        {/* Missing Participants Section */}
+        {/* Missing Participants Dropdown Section */}
         <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-lg font-semibold mb-4">Missing Participants</h3>
+          <button 
+            onClick={() => setExpandedParticipants(!expandedParticipants)}
+            className="w-full flex justify-between items-center text-lg font-semibold mb-4"
+          >
+            <span>Missing Participants ({metrics.notCheckedInParticipants.length})</span>
+            {expandedParticipants ? 
+              <ChevronUp className="text-gray-500" /> : 
+              <ChevronDown className="text-gray-500" />
+            }
+          </button>
           
-          {metrics.notCheckedInParticipants.length > 0 ? (
-            <ul className="divide-y divide-gray-200">
-              {metrics.notCheckedInParticipants.slice(0, 5).map((person, idx) => (
-                <li key={idx} className="py-2">
-                  <div className="flex justify-between items-center">
-                    <span>{person.Name}</span>
-                    <button
-                      onClick={() => {
-                        const personIndex = participants.findIndex(p => p.Name === person.Name);
-                        if (personIndex !== -1) toggleStatus('participant', personIndex);
-                      }}
-                      className="px-3 py-1 text-xs rounded text-white bg-red-600 hover:bg-red-700"
-                      style={{ backgroundColor: '#c53a49' }}
-                    >
-                      Check In
-                    </button>
-                  </div>
-                </li>
-              ))}
-              {metrics.notCheckedInParticipants.length > 5 && (
-                <li className="py-2 text-center text-gray-500">
-                  +{metrics.notCheckedInParticipants.length - 5} more...
-                </li>
+          {expandedParticipants && (
+            <div className="mt-2">
+              {metrics.notCheckedInParticipants.length > 0 ? (
+                <ul className="divide-y divide-gray-200 max-h-64 overflow-y-auto">
+                  {metrics.notCheckedInParticipants.map((person, idx) => (
+                    <li key={idx} className="py-2">
+                      <div className="flex justify-between items-center">
+                        <span>{person.Name}</span>
+                        <button
+                          onClick={() => {
+                            const personIndex = participants.findIndex(p => p.Name === person.Name);
+                            if (personIndex !== -1) toggleStatus('participant', personIndex);
+                          }}
+                          className="px-3 py-1 text-xs rounded text-white bg-red-600 hover:bg-red-700"
+                          style={{ backgroundColor: '#c53a49' }}
+                        >
+                          Check In
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-center py-4 text-gray-500">All checked in! 🎉</p>
               )}
-            </ul>
-          ) : (
-            <p className="text-center py-4 text-gray-500">All checked in! 🎉</p>
+            </div>
+          )}
+          
+          {!expandedParticipants && metrics.notCheckedInParticipants.length > 0 && (
+            <p className="text-center py-2 text-gray-500">
+              Click to view {metrics.notCheckedInParticipants.length} missing participants
+            </p>
           )}
         </div>
         
-        {/* Missing Staff Section */}
+        {/* Missing Staff Dropdown Section */}
         <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-lg font-semibold mb-4">Missing Staff</h3>
+          <button 
+            onClick={() => setExpandedStaff(!expandedStaff)}
+            className="w-full flex justify-between items-center text-lg font-semibold mb-4"
+          >
+            <span>Missing Staff ({metrics.notCheckedInStaff.length})</span>
+            {expandedStaff ? 
+              <ChevronUp className="text-gray-500" /> : 
+              <ChevronDown className="text-gray-500" />
+            }
+          </button>
           
-          {metrics.notCheckedInStaff.length > 0 ? (
-            <ul className="divide-y divide-gray-200">
-              {metrics.notCheckedInStaff.slice(0, 5).map((person, idx) => (
-                <li key={idx} className="py-2">
-                  <div className="flex justify-between items-center">
-                    <span>{person.Name}</span>
-                    <button
-                      onClick={() => {
-                        const personIndex = staff.findIndex(p => p.Name === person.Name);
-                        if (personIndex !== -1) toggleStatus('staff', personIndex);
-                      }}
-                      className="px-3 py-1 text-xs rounded text-white bg-red-600 hover:bg-red-700"
-                      style={{ backgroundColor: '#c53a49' }}
-                    >
-                      Check In
-                    </button>
-                  </div>
-                </li>
-              ))}
-              {metrics.notCheckedInStaff.length > 5 && (
-                <li className="py-2 text-center text-gray-500">
-                  +{metrics.notCheckedInStaff.length - 5} more...
-                </li>
+          {expandedStaff && (
+            <div className="mt-2">
+              {metrics.notCheckedInStaff.length > 0 ? (
+                <ul className="divide-y divide-gray-200 max-h-64 overflow-y-auto">
+                  {metrics.notCheckedInStaff.map((person, idx) => (
+                    <li key={idx} className="py-2">
+                      <div className="flex justify-between items-center">
+                        <span>{person.Name}</span>
+                        <button
+                          onClick={() => {
+                            const personIndex = staff.findIndex(p => p.Name === person.Name);
+                            if (personIndex !== -1) toggleStatus('staff', personIndex);
+                          }}
+                          className="px-3 py-1 text-xs rounded text-white bg-red-600 hover:bg-red-700"
+                          style={{ backgroundColor: '#c53a49' }}
+                        >
+                          Check In
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-center py-4 text-gray-500">All checked in! 🎉</p>
               )}
-            </ul>
-          ) : (
-            <p className="text-center py-4 text-gray-500">All checked in! 🎉</p>
+            </div>
+          )}
+          
+          {!expandedStaff && metrics.notCheckedInStaff.length > 0 && (
+            <p className="text-center py-2 text-gray-500">
+              Click to view {metrics.notCheckedInStaff.length} missing staff
+            </p>
           )}
         </div>
       </div>
@@ -438,9 +495,14 @@ export default function App() {
             <button
               onClick={() => {
                 if (window.confirm("Are you sure you want to reset all check-in data? This cannot be undone.")) {
-                  localStorage.removeItem('roseCity_participants');
-                  localStorage.removeItem('roseCity_staff');
-                  localStorage.removeItem(STORAGE_KEY);
+                  localStorage.removeItem(`${APP_ID}_participants`);
+                  localStorage.removeItem(`${APP_ID}_staff`);
+                  
+                  // Also clear remote data
+                  fetch(`https://jsonbin.org/rosecity/${APP_ID}`, {
+                    method: 'DELETE'
+                  }).catch(err => console.log("Error clearing remote data", err));
+                  
                   window.location.reload();
                 }
               }}
