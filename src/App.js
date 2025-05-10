@@ -15,28 +15,48 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load data from CSV files
+  // Load data from CSV files and localStorage
   useEffect(() => {
     const loadData = async () => {
       try {
-        const participantsFile = await window.fs.readFile('data/2025 Rose City Officiating Experience .csv - Camper Details (1).csv', { encoding: 'utf8' });
-const staffFile = await window.fs.readFile('data/2025 Rose City Officiating Experience .csv - Staff Details.csv', { encoding: 'utf8' });
+        // Check if we have saved data in localStorage
+        const savedParticipants = localStorage.getItem('roseCity_participants');
+        const savedStaff = localStorage.getItem('roseCity_staff');
+        
+        if (savedParticipants && savedStaff) {
+          // Use saved data if available
+          setParticipants(JSON.parse(savedParticipants));
+          setStaff(JSON.parse(savedStaff));
+          setIsLoaded(true);
+          console.log("Loaded data from localStorage");
+        } else {
+          // Otherwise load from CSV files
+          const participantsFile = await window.fs.readFile('data/2025 Rose City Officiating Experience .csv - Camper Details (1).csv', { encoding: 'utf8' });
+          const staffFile = await window.fs.readFile('data/2025 Rose City Officiating Experience .csv - Staff Details.csv', { encoding: 'utf8' });
 
-        const parsedParticipants = parseCSV(participantsFile).map(p => ({
-          ...p,
-          checkedIn: false,
-          shirtProvided: false
-        }));
+          const parsedParticipants = parseCSV(participantsFile).map(p => ({
+            ...p,
+            checkedIn: false,
+            shirtProvided: false
+          }));
 
-        const parsedStaff = parseCSV(staffFile).map(s => ({
-          ...s,
-          checkedIn: false,
-          shirtProvided: s['Shirt Needed'] === 'No'
-        }));
+          const parsedStaff = parseCSV(staffFile).map(s => ({
+            ...s,
+            checkedIn: false,
+            shirtProvided: s['Shirt Needed'] === 'No'
+          }));
 
-        setParticipants(parsedParticipants);
-        setStaff(parsedStaff);
+          setParticipants(parsedParticipants);
+          setStaff(parsedStaff);
+          setIsLoaded(true);
+          
+          // Save initial data to localStorage
+          localStorage.setItem('roseCity_participants', JSON.stringify(parsedParticipants));
+          localStorage.setItem('roseCity_staff', JSON.stringify(parsedStaff));
+          console.log("Loaded data from CSV files and saved to localStorage");
+        }
       } catch (error) {
         console.error("Error loading data:", error);
       }
@@ -44,6 +64,22 @@ const staffFile = await window.fs.readFile('data/2025 Rose City Officiating Expe
 
     loadData();
   }, []);
+
+  // Save participants data to localStorage
+  useEffect(() => {
+    if (isLoaded && participants.length > 0) {
+      localStorage.setItem('roseCity_participants', JSON.stringify(participants));
+      console.log("Saved participants data to localStorage");
+    }
+  }, [participants, isLoaded]);
+
+  // Save staff data to localStorage
+  useEffect(() => {
+    if (isLoaded && staff.length > 0) {
+      localStorage.setItem('roseCity_staff', JSON.stringify(staff));
+      console.log("Saved staff data to localStorage");
+    }
+  }, [staff, isLoaded]);
 
   // Toggle checked-in status for participants
   const toggleParticipantStatus = (index) => {
@@ -622,9 +658,56 @@ const staffFile = await window.fs.readFile('data/2025 Rose City Officiating Expe
       {/* Footer */}
       <footer className="bg-white py-4 border-t">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-gray-500 text-sm">
-            &copy; {new Date().getFullYear()} Rose City Officiating Experience
-          </p>
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <p className="text-gray-500 text-sm mb-2 md:mb-0">
+              &copy; {new Date().getFullYear()} Rose City Officiating Experience
+            </p>
+            <div>
+              <button
+                onClick={() => {
+                  if (window.confirm("Are you sure you want to reset all check-in data? This cannot be undone.")) {
+                    localStorage.removeItem('roseCity_participants');
+                    localStorage.removeItem('roseCity_staff');
+                    window.location.reload();
+                  }
+                }}
+                className="text-sm text-red-600 hover:text-red-800 mr-4"
+                style={{ color: '#c53a49' }}
+              >
+                Reset All Data
+              </button>
+              <button
+                onClick={() => {
+                  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                  const dataExport = {
+                    participants: participants,
+                    staff: staff,
+                    exportDate: new Date().toISOString(),
+                    summary: {
+                      totalParticipants,
+                      checkedInParticipants,
+                      totalStaff,
+                      checkedInStaff,
+                      totalShirtsGiven,
+                      totalShirtsNeeded
+                    }
+                  };
+                  
+                  const dataStr = JSON.stringify(dataExport, null, 2);
+                  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                  const url = URL.createObjectURL(dataBlob);
+                  
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `rose-city-check-in-data-${timestamp}.json`;
+                  link.click();
+                }}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                Export Data
+              </button>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
