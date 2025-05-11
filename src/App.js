@@ -238,7 +238,8 @@ export default function App() {
               
               {/* Show T-Shirt Size for participants */}
               {isParticipant && person["T-Shirt Size"] && (
-                <span className="ml-4 text-sm text-gray-500">
+                <span className="ml-2 text-sm text-gray-500">
+                  <span className="mx-1">•</span>
                   <span className="inline-flex px-2 py-0.5 bg-gray-100 text-gray-800 rounded-full">
                     Size: {person["T-Shirt Size"]}
                   </span>
@@ -247,7 +248,8 @@ export default function App() {
               
               {/* Show shirt details for staff who need shirts */}
               {!isParticipant && person["Shirt Needed"] === "Yes" && (
-                <span className="ml-4 text-sm text-gray-500">
+                <span className="ml-2 text-sm text-gray-500">
+                  <span className="mx-1">•</span>
                   <span className="inline-flex px-2 py-0.5 bg-gray-100 text-gray-800 rounded-full">
                     Size: {person["Shirt Size"]}  •  Type: {person["Shirt Type"]}
                   </span>
