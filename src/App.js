@@ -200,19 +200,6 @@ export default function App() {
       setStaff(updated);
     }
   };
-  
-  // Shirt distribution toggle function
-  const toggleShirtDistributed = (type, index) => {
-    if (type === 'participant') {
-      const updated = [...participants];
-      updated[index].shirtDistributed = !updated[index].shirtDistributed;
-      setParticipants(updated);
-    } else {
-      const updated = [...staff];
-      updated[index].shirtDistributed = !updated[index].shirtDistributed;
-      setStaff(updated);
-    }
-  };
 
   // Calculate metrics for dashboard
   const metrics = {
@@ -248,30 +235,18 @@ export default function App() {
           <div className="flex justify-between items-center">
             <div className="flex-1">
               <span className="font-medium">{person.Name}</span>
-              {person["T-Shirt Size"] && (
+              
+              {/* Show shirt details only for staff who need shirts */}
+              {!isParticipant && person["Shirt Needed"] === "Yes" && (
                 <span className="ml-2 text-sm text-gray-500">
                   <span className="inline-flex px-2 py-0.5 bg-gray-100 text-gray-800 rounded-full">
-                    {person["T-Shirt Size"]}
+                    {person["Shirt Size"]} - {person["Shirt Type"]}
                   </span>
                 </span>
               )}
             </div>
             
             <div className="flex space-x-2">
-              {!isParticipant && (
-                <button
-                  onClick={() => toggleShirtDistributed(isParticipant ? 'participant' : 'staff', personIndex)}
-                  className={`px-3 py-1 text-xs rounded text-white ${
-                    person.shirtDistributed ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"
-                  }`}
-                  style={{ 
-                    backgroundColor: person.shirtDistributed ? "#4ade80" : "#3b82f6"
-                  }}
-                >
-                  {person.shirtDistributed ? "Shirt ✓" : "Give Shirt"}
-                </button>
-              )}
-              
               <button
                 onClick={() => toggleStatus(isParticipant ? 'participant' : 'staff', personIndex)}
                 className={`px-3 py-1 text-xs rounded text-white ${
@@ -352,13 +327,22 @@ export default function App() {
                   ></div>
                 </div>
                 
-                <input
-                  type="text"
-                  placeholder="Search participant by name..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full p-2 mb-4 border border-gray-300 rounded"
-                />
+                {/* Replaced search box with missing participants preview */}
+                <div className="text-sm text-gray-600">
+                  <button 
+                    onClick={() => setExpandedParticipants(!expandedParticipants)}
+                    className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                  >
+                    View {metrics.notCheckedInParticipants.length} missing participants
+                  </button>
+                  {" | "}
+                  <button 
+                    onClick={() => setExpandedCheckedInParticipants(!expandedCheckedInParticipants)}
+                    className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                  >
+                    View {metrics.checkedInParticipantsList.length} checked-in participants
+                  </button>
+                </div>
               </div>
               
               {/* Staff Status Card */}
@@ -388,12 +372,21 @@ export default function App() {
                   ></div>
                 </div>
                 
-                {/* Staff search is connected to the same searchQuery state */}
-                <div className="flex items-center">
-                  <span className="text-sm font-medium text-gray-600 mr-2">Staff t-shirts:</span>
-                  <span className="inline-flex px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs">
-                    {staff.filter(s => s.shirtDistributed).length} of {staff.length} distributed
-                  </span>
+                {/* Staff navigation actions */}
+                <div className="text-sm text-gray-600">
+                  <button 
+                    onClick={() => setExpandedStaff(!expandedStaff)}
+                    className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                  >
+                    View {metrics.notCheckedInStaff.length} missing staff
+                  </button>
+                  {" | "}
+                  <button 
+                    onClick={() => setExpandedCheckedInStaff(!expandedCheckedInStaff)}
+                    className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                  >
+                    View {metrics.checkedInStaffList.length} checked-in staff
+                  </button>
                 </div>
               </div>
             </div>
