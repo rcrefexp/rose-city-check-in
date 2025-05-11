@@ -238,9 +238,9 @@ export default function App() {
               
               {/* Show shirt details only for staff who need shirts */}
               {!isParticipant && person["Shirt Needed"] === "Yes" && (
-                <span className="ml-2 text-sm text-gray-500">
+                <span className="ml-4 text-sm text-gray-500">
                   <span className="inline-flex px-2 py-0.5 bg-gray-100 text-gray-800 rounded-full">
-                    {person["Shirt Size"]} - {person["Shirt Type"]}
+                    Size: {person["Shirt Size"]}  •  Type: {person["Shirt Type"]}
                   </span>
                 </span>
               )}
@@ -327,21 +327,74 @@ export default function App() {
                   ></div>
                 </div>
                 
-                {/* Replaced search box with missing participants preview */}
-                <div className="text-sm text-gray-600">
+                {/* Missing Participants collapsible section */}
+                <div className="border-t border-gray-200 mt-4 pt-2">
                   <button 
                     onClick={() => setExpandedParticipants(!expandedParticipants)}
-                    className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                    className="w-full flex justify-between items-center text-sm font-medium p-2 text-left"
                   >
-                    View {metrics.notCheckedInParticipants.length} missing participants
+                    <span>Missing Participants ({metrics.notCheckedInParticipants.length})</span>
+                    {expandedParticipants ? 
+                      <ChevronUp className="text-gray-500 h-4 w-4" /> : 
+                      <ChevronDown className="text-gray-500 h-4 w-4" />
+                    }
                   </button>
-                  {" | "}
+                  
+                  {expandedParticipants && (
+                    <div className="border-t border-gray-200 mt-1">
+                      {metrics.notCheckedInParticipants.length > 0 ? (
+                        <ul className="divide-y divide-gray-200 max-h-48 overflow-y-auto">
+                          {metrics.notCheckedInParticipants
+                            .filter(person => !searchQuery || (person.Name && person.Name.toLowerCase().includes(searchQuery.toLowerCase())))
+                            .map((person, idx) => (
+                              <PersonListItem 
+                                key={idx} 
+                                person={person} 
+                                type="participant" 
+                                index={idx}
+                              />
+                            ))}
+                        </ul>
+                      ) : (
+                        <p className="text-center py-4 text-gray-500">All checked in! 🎉</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Checked-In Participants collapsible section */}
+                <div className="border-t border-gray-200 mt-2 pt-2">
                   <button 
                     onClick={() => setExpandedCheckedInParticipants(!expandedCheckedInParticipants)}
-                    className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                    className="w-full flex justify-between items-center text-sm font-medium p-2 text-left"
                   >
-                    View {metrics.checkedInParticipantsList.length} checked-in participants
+                    <span>Checked-In Participants ({metrics.checkedInParticipantsList.length})</span>
+                    {expandedCheckedInParticipants ? 
+                      <ChevronUp className="text-gray-500 h-4 w-4" /> : 
+                      <ChevronDown className="text-gray-500 h-4 w-4" />
+                    }
                   </button>
+                  
+                  {expandedCheckedInParticipants && (
+                    <div className="border-t border-gray-200 mt-1">
+                      {metrics.checkedInParticipantsList.length > 0 ? (
+                        <ul className="divide-y divide-gray-200 max-h-48 overflow-y-auto">
+                          {metrics.checkedInParticipantsList
+                            .filter(person => !searchQuery || (person.Name && person.Name.toLowerCase().includes(searchQuery.toLowerCase())))
+                            .map((person, idx) => (
+                              <PersonListItem 
+                                key={idx} 
+                                person={person} 
+                                type="participant" 
+                                index={idx}
+                              />
+                            ))}
+                        </ul>
+                      ) : (
+                        <p className="text-center py-4 text-gray-500">No one checked in yet</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -372,166 +425,91 @@ export default function App() {
                   ></div>
                 </div>
                 
-                {/* Staff navigation actions */}
-                <div className="text-sm text-gray-600">
+                {/* Missing Staff collapsible section */}
+                <div className="border-t border-gray-200 mt-4 pt-2">
                   <button 
                     onClick={() => setExpandedStaff(!expandedStaff)}
-                    className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                    className="w-full flex justify-between items-center text-sm font-medium p-2 text-left"
                   >
-                    View {metrics.notCheckedInStaff.length} missing staff
+                    <span>Missing Staff ({metrics.notCheckedInStaff.length})</span>
+                    {expandedStaff ? 
+                      <ChevronUp className="text-gray-500 h-4 w-4" /> : 
+                      <ChevronDown className="text-gray-500 h-4 w-4" />
+                    }
                   </button>
-                  {" | "}
+                  
+                  {expandedStaff && (
+                    <div className="border-t border-gray-200 mt-1">
+                      {metrics.notCheckedInStaff.length > 0 ? (
+                        <ul className="divide-y divide-gray-200 max-h-48 overflow-y-auto">
+                          {metrics.notCheckedInStaff
+                            .filter(person => !searchQuery || (person.Name && person.Name.toLowerCase().includes(searchQuery.toLowerCase())))
+                            .map((person, idx) => (
+                              <PersonListItem 
+                                key={idx} 
+                                person={person} 
+                                type="staff" 
+                                index={idx}
+                              />
+                            ))}
+                        </ul>
+                      ) : (
+                        <p className="text-center py-4 text-gray-500">All checked in! 🎉</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Checked-In Staff collapsible section */}
+                <div className="border-t border-gray-200 mt-2 pt-2">
                   <button 
                     onClick={() => setExpandedCheckedInStaff(!expandedCheckedInStaff)}
-                    className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                    className="w-full flex justify-between items-center text-sm font-medium p-2 text-left"
                   >
-                    View {metrics.checkedInStaffList.length} checked-in staff
+                    <span>Checked-In Staff ({metrics.checkedInStaffList.length})</span>
+                    {expandedCheckedInStaff ? 
+                      <ChevronUp className="text-gray-500 h-4 w-4" /> : 
+                      <ChevronDown className="text-gray-500 h-4 w-4" />
+                    }
                   </button>
+                  
+                  {expandedCheckedInStaff && (
+                    <div className="border-t border-gray-200 mt-1">
+                      {metrics.checkedInStaffList.length > 0 ? (
+                        <ul className="divide-y divide-gray-200 max-h-48 overflow-y-auto">
+                          {metrics.checkedInStaffList
+                            .filter(person => !searchQuery || (person.Name && person.Name.toLowerCase().includes(searchQuery.toLowerCase())))
+                            .map((person, idx) => (
+                              <PersonListItem 
+                                key={idx} 
+                                person={person} 
+                                type="staff" 
+                                index={idx}
+                              />
+                            ))}
+                        </ul>
+                      ) : (
+                        <p className="text-center py-4 text-gray-500">No one checked in yet</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Missing Participants Dropdown Section */}
-            <div className="bg-white rounded-lg shadow">
-              <button 
-                onClick={() => setExpandedParticipants(!expandedParticipants)}
-                className="w-full flex justify-between items-center text-lg font-semibold p-4"
-              >
-                <span>Missing Participants ({metrics.notCheckedInParticipants.length})</span>
-                {expandedParticipants ? 
-                  <ChevronUp className="text-gray-500" /> : 
-                  <ChevronDown className="text-gray-500" />
-                }
-              </button>
-              
-              {expandedParticipants && (
-                <div className="border-t border-gray-200">
-                  {metrics.notCheckedInParticipants.length > 0 ? (
-                    <ul className="divide-y divide-gray-200 max-h-64 overflow-y-auto">
-                      {metrics.notCheckedInParticipants
-                        .filter(person => !searchQuery || (person.Name && person.Name.toLowerCase().includes(searchQuery.toLowerCase())))
-                        .map((person, idx) => (
-                          <PersonListItem 
-                            key={idx} 
-                            person={person} 
-                            type="participant" 
-                            index={idx}
-                          />
-                        ))}
-                    </ul>
-                  ) : (
-                    <p className="text-center py-4 text-gray-500">All checked in! 🎉</p>
-                  )}
-                </div>
-              )}
+          {/* Search Box (shared between participants and staff) */}
+          <div className="bg-white rounded-lg shadow p-4 mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Quick Search</h3>
             </div>
-            
-            {/* Missing Staff Dropdown Section */}
-            <div className="bg-white rounded-lg shadow">
-              <button 
-                onClick={() => setExpandedStaff(!expandedStaff)}
-                className="w-full flex justify-between items-center text-lg font-semibold p-4"
-              >
-                <span>Missing Staff ({metrics.notCheckedInStaff.length})</span>
-                {expandedStaff ? 
-                  <ChevronUp className="text-gray-500" /> : 
-                  <ChevronDown className="text-gray-500" />
-                }
-              </button>
-              
-              {expandedStaff && (
-                <div className="border-t border-gray-200">
-                  {metrics.notCheckedInStaff.length > 0 ? (
-                    <ul className="divide-y divide-gray-200 max-h-64 overflow-y-auto">
-                      {metrics.notCheckedInStaff
-                        .filter(person => !searchQuery || (person.Name && person.Name.toLowerCase().includes(searchQuery.toLowerCase())))
-                        .map((person, idx) => (
-                          <PersonListItem 
-                            key={idx} 
-                            person={person} 
-                            type="staff" 
-                            index={idx}
-                          />
-                        ))}
-                    </ul>
-                  ) : (
-                    <p className="text-center py-4 text-gray-500">All checked in! 🎉</p>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            {/* Checked-In Participants Dropdown */}
-            <div className="bg-white rounded-lg shadow">
-              <button 
-                onClick={() => setExpandedCheckedInParticipants(!expandedCheckedInParticipants)}
-                className="w-full flex justify-between items-center text-lg font-semibold p-4"
-              >
-                <span>Checked-In Participants ({metrics.checkedInParticipantsList.length})</span>
-                {expandedCheckedInParticipants ? 
-                  <ChevronUp className="text-gray-500" /> : 
-                  <ChevronDown className="text-gray-500" />
-                }
-              </button>
-              
-              {expandedCheckedInParticipants && (
-                <div className="border-t border-gray-200">
-                  {metrics.checkedInParticipantsList.length > 0 ? (
-                    <ul className="divide-y divide-gray-200 max-h-64 overflow-y-auto">
-                      {metrics.checkedInParticipantsList
-                        .filter(person => !searchQuery || (person.Name && person.Name.toLowerCase().includes(searchQuery.toLowerCase())))
-                        .map((person, idx) => (
-                          <PersonListItem 
-                            key={idx} 
-                            person={person} 
-                            type="participant" 
-                            index={idx}
-                          />
-                        ))}
-                    </ul>
-                  ) : (
-                    <p className="text-center py-4 text-gray-500">No one checked in yet</p>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            {/* Checked-In Staff Dropdown */}
-            <div className="bg-white rounded-lg shadow">
-              <button 
-                onClick={() => setExpandedCheckedInStaff(!expandedCheckedInStaff)}
-                className="w-full flex justify-between items-center text-lg font-semibold p-4"
-              >
-                <span>Checked-In Staff ({metrics.checkedInStaffList.length})</span>
-                {expandedCheckedInStaff ? 
-                  <ChevronUp className="text-gray-500" /> : 
-                  <ChevronDown className="text-gray-500" />
-                }
-              </button>
-              
-              {expandedCheckedInStaff && (
-                <div className="border-t border-gray-200">
-                  {metrics.checkedInStaffList.length > 0 ? (
-                    <ul className="divide-y divide-gray-200 max-h-64 overflow-y-auto">
-                      {metrics.checkedInStaffList
-                        .filter(person => !searchQuery || (person.Name && person.Name.toLowerCase().includes(searchQuery.toLowerCase())))
-                        .map((person, idx) => (
-                          <PersonListItem 
-                            key={idx} 
-                            person={person} 
-                            type="staff" 
-                            index={idx}
-                          />
-                        ))}
-                    </ul>
-                  ) : (
-                    <p className="text-center py-4 text-gray-500">No one checked in yet</p>
-                  )}
-                </div>
-              )}
-            </div>
+            <input
+              type="text"
+              placeholder="Search by name across all lists..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded"
+            />
           </div>
         </div>
       </main>
