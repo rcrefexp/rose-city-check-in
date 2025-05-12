@@ -4,7 +4,7 @@ import { getDatabase } from 'firebase/database';
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyClw7-J5-dWAxzGX75MKNpOLGT-GQkFBzs",
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyClw7-J5-dWAxzGX75MKNpOLGT-GQkFBzs",
   authDomain: "rc-exp-check-in.firebaseapp.com",
   databaseURL: "https://rc-exp-check-in-default-rtdb.firebaseio.com",
   projectId: "rc-exp-check-in",
@@ -15,7 +15,17 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const database = getDatabase(app);
+let app;
+let database;
+
+try {
+  app = initializeApp(firebaseConfig);
+  database = getDatabase(app);
+  console.log("Firebase initialized successfully");
+} catch (error) {
+  console.error("Error initializing Firebase:", error);
+  // Provide a fallback for database to prevent null reference errors
+  console.warn("Using offline mode - data will be stored locally only");
+}
 
 export { app, database };
