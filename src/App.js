@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Users, UserCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import Papa from 'papaparse';
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, onValue, set, get } from 'firebase/database';
+import { getDatabase, ref, onValue, set } from 'firebase/database';
 
 export default function App() {
   // Core state
@@ -30,7 +30,7 @@ export default function App() {
       authDomain: "rc-exp-check-in.firebaseapp.com",
       databaseURL: "https://rc-exp-check-in-default-rtdb.firebaseio.com",
       projectId: "rc-exp-check-in",
-      storageBucket: "rc-exp-check-in.firebasestorage.app",
+      storageBucket: "rc-exp-check-in.appspot.com", // Fixed storage bucket URL
       messagingSenderId: "787125233515",
       appId: "1:787125233515:web:771a88b31dfdd2f8b18e2e",
       measurementId: "G-29CSGZ0MXR"
@@ -54,7 +54,7 @@ export default function App() {
   // Load data from Firebase or CSV
   const loadData = async (database) => {
     try {
-      // First, check if we have data in Firebase
+      // Check if we have data in Firebase
       const dbRef = ref(database, 'roseCityData');
       
       // Set up listener for real-time updates
@@ -71,11 +71,6 @@ export default function App() {
           // No data in Firebase, load from CSV
           console.log("No data in Firebase, loading from CSV");
           await loadFromCSV();
-          
-          // Push initial data to Firebase
-          if (participants.length > 0 || staff.length > 0) {
-            syncToFirebase(participants, staff, database);
-          }
         }
       }, (error) => {
         console.error("Firebase data read failed:", error);
@@ -90,8 +85,8 @@ export default function App() {
   // Load data from CSV files
   const loadFromCSV = async () => {
     try {
-      const participantsFile = await window.fs.readFile('data/2025 Rose City Officiating Experience .csv - Camper Details (1).csv', { encoding: 'utf8' });
-      const staffFile = await window.fs.readFile('data/2025 Rose City Officiating Experience .csv - Staff Details.csv', { encoding: 'utf8' });
+      const participantsFile = await fetch('/data/participants.csv').then(res => res.text());
+      const staffFile = await fetch('/data/staff.csv').then(res => res.text());
 
       const parsedParticipants = parseCSV(participantsFile).map(p => ({
         ...p,
@@ -108,6 +103,11 @@ export default function App() {
       setParticipants(parsedParticipants);
       setStaff(parsedStaff);
       setIsLoaded(true);
+      
+      // Initial sync to Firebase
+      if (firebaseDb) {
+        syncToFirebase(parsedParticipants, parsedStaff);
+      }
       
       return {
         participants: parsedParticipants,
@@ -149,27 +149,27 @@ export default function App() {
   };
   
   // Function to sync data to Firebase
-  const syncToFirebase = async (participantsData, staffData, db) => {
-    if (!db) db = firebaseDb;
+  const syncToFirebase = async (participantsData, staffData) => {
+    const db = firebaseDb;
     if (!db) {
       console.error("Firebase database not initialized");
       // Fall back to local storage
-      localStorage.setItem('RoseCityCheckin_participants', JSON.stringify(participantsData));
-      localStorage.setItem('RoseCityCheckin_staff', JSON.stringify(staffData));
+      localStorage.setItem('RoseCityCheckin_participants', JSON.stringify(participantsData || participants));
+      localStorage.setItem('RoseCityCheckin_staff', JSON.stringify(staffData || staff));
       return false;
     }
     
     try {
       const timestamp = Date.now();
       const dataToSync = {
-        participants: participantsData,
-        staff: staffData,
+        participants: participantsData || participants,
+        staff: staffData || staff,
         timestamp
       };
       
       // Save to localStorage as fallback
-      localStorage.setItem('RoseCityCheckin_participants', JSON.stringify(participantsData));
-      localStorage.setItem('RoseCityCheckin_staff', JSON.stringify(staffData));
+      localStorage.setItem('RoseCityCheckin_participants', JSON.stringify(participantsData || participants));
+      localStorage.setItem('RoseCityCheckin_staff', JSON.stringify(staffData || staff));
       
       // Sync to Firebase
       await set(ref(db, 'roseCityData'), dataToSync);
@@ -184,7 +184,7 @@ export default function App() {
   // Save and sync participants/staff data when they change
   useEffect(() => {
     if (isLoaded && firebaseDb && (participants.length > 0 || staff.length > 0)) {
-      syncToFirebase(participants, staff, firebaseDb);
+      syncToFirebase();
     }
   }, [participants, staff, isLoaded]);
 
