@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Users, UserCheck, ChevronDown, ChevronUp } from 'lucide-react';
 import Papa from 'papaparse';
-import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, onValue, set } from 'firebase/database';
+import { database } from './firebase'; // Import from firebase.js
+import { ref, onValue, set } from 'firebase/database';
 
 export default function App() {
   // Core state
@@ -15,7 +15,6 @@ export default function App() {
   const [expandedStaff, setExpandedStaff] = useState(false);
   const [expandedCheckedInParticipants, setExpandedCheckedInParticipants] = useState(false);
   const [expandedCheckedInStaff, setExpandedCheckedInStaff] = useState(false);
-  const [firebaseDb, setFirebaseDb] = useState(null);
   
   // Helper for timestamp formatting
   const formatTime = (timestamp) => {
@@ -25,24 +24,8 @@ export default function App() {
 
   // Initialize Firebase connection
   useEffect(() => {
-    const firebaseConfig = {
-      apiKey: "AIzaSyClw7-J5-dWAxzGX75MKNpOLGT-GQkFBzs",
-      authDomain: "rc-exp-check-in.firebaseapp.com",
-      databaseURL: "https://rc-exp-check-in-default-rtdb.firebaseio.com",
-      projectId: "rc-exp-check-in",
-      storageBucket: "rc-exp-check-in.appspot.com", // Fixed storage bucket URL
-      messagingSenderId: "787125233515",
-      appId: "1:787125233515:web:771a88b31dfdd2f8b18e2e",
-      measurementId: "G-29CSGZ0MXR"
-    };
-
     try {
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      const database = getDatabase(app);
-      setFirebaseDb(database);
-      
-      // Set up listeners and load data
+      // Load data from Firebase
       loadData(database);
     } catch (error) {
       console.error("Error initializing Firebase:", error);
@@ -105,9 +88,7 @@ export default function App() {
       setIsLoaded(true);
       
       // Initial sync to Firebase
-      if (firebaseDb) {
-        syncToFirebase(parsedParticipants, parsedStaff);
-      }
+      syncToFirebase(parsedParticipants, parsedStaff);
       
       return {
         participants: parsedParticipants,
@@ -150,8 +131,7 @@ export default function App() {
   
   // Function to sync data to Firebase
   const syncToFirebase = async (participantsData, staffData) => {
-    const db = firebaseDb;
-    if (!db) {
+    if (!database) {
       console.error("Firebase database not initialized");
       // Fall back to local storage
       localStorage.setItem('RoseCityCheckin_participants', JSON.stringify(participantsData || participants));
@@ -172,7 +152,7 @@ export default function App() {
       localStorage.setItem('RoseCityCheckin_staff', JSON.stringify(staffData || staff));
       
       // Sync to Firebase
-      await set(ref(db, 'roseCityData'), dataToSync);
+      await set(ref(database, 'roseCityData'), dataToSync);
       setLastSync(timestamp);
       return true;
     } catch (error) {
@@ -183,7 +163,7 @@ export default function App() {
 
   // Save and sync participants/staff data when they change
   useEffect(() => {
-    if (isLoaded && firebaseDb && (participants.length > 0 || staff.length > 0)) {
+    if (isLoaded && database && (participants.length > 0 || staff.length > 0)) {
       syncToFirebase();
     }
   }, [participants, staff, isLoaded]);
@@ -537,8 +517,8 @@ export default function App() {
                   localStorage.removeItem('RoseCityCheckin_staff');
                   
                   // Clear Firebase data if available
-                  if (firebaseDb) {
-                    set(ref(firebaseDb, 'roseCityData'), null);
+                  if (database) {
+                    set(ref(database, 'roseCityData'), null);
                   }
                   
                   window.location.reload();
